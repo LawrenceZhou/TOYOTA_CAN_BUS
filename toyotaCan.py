@@ -1,19 +1,7 @@
 #!/usr/bin/env python
 """
-can_logger.py logs CAN traffic to the terminal and to a file on disk.
-
-    can_logger.py can0
-
-See candump in the can-utils package for a C implementation.
-Efficient filtering has been implemented for the socketcan backend.
-For example the command
-
-    can_logger.py can0 F03000:FFF000
-
-Will filter for can frames with a can_id containing XXF03XXX.
-
-Dynamic Controls 2010
-
+toyotaCAN.py reads data through CAN Bus.
+2016-12-05 Only brake position info will be sent.
 UDP communication is added. Temporary communication protocol is used.
 message_type(4 bytes)+percent(3 bytes)+timestamp(13 bytes)
 """

@@ -28,6 +28,8 @@ print("First trial message sent successfully!")
 def send_udp(msg):
     if msg.arbitration_id == 0x0224:
         send_brake(msg)
+    if msg.arbitration_id == 0x00B4:
+        send_speed(msg)
 
 #Send the brake position in percent measurement
 def send_brake(msg):
@@ -41,6 +43,17 @@ def send_brake(msg):
         print(MSG_)
         sock.sendto(MSG_, (UDP_IP, UDP_PORT))
 
+        
+def send_speed(msg):
+    data_ = binascii.hexlify(msg.data)
+    #convert the hex to dec
+    auto_speed = int(data_[10:15], 16)
+
+    if auto_speed > 0:
+        #construct the message
+        MSG_ = "00B4" + str(auto_speed).ljust(5) + str(msg.timestamp).ljust(13)
+        print(MSG_)
+        sock.sendto(MSG_, (UDP_IP, UDP_PORT))
 #UDP sending part
 
 

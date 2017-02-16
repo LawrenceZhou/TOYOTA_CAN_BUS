@@ -17,7 +17,7 @@ import can
 # UDP socket setting 
 import socket
 UDP_IP = "192.168.56.1"
-UDP_PORT = 6000
+UDP_PORT = 5000
 MSG = str(time.time())
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.sendto(MSG, (UDP_IP, UDP_PORT))

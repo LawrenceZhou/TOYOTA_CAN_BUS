@@ -30,7 +30,11 @@ def send_udp(msg):
         send_brake(msg)
     if msg.arbitration_id == 0x00B4:
         send_speed(msg)
-
+    if msg.arbitration_id == 0x0245:   #new 03/01
+        send_accel(msg)   #new 03/01
+    if msg.arbitration_id == 0x0025:   #new 03/01
+        send_steer(msg)   #new 03/01
+        
 #Send the brake position in percent measurement
 def send_brake(msg):
     data_ = binascii.hexlify(msg.data)
@@ -43,7 +47,7 @@ def send_brake(msg):
         print(MSG_)
         sock.sendto(MSG_, (UDP_IP, UDP_PORT))
 
-        
+#should modify the send_speed function, to use the non-display speed
 def send_speed(msg):
     data_ = binascii.hexlify(msg.data)
     #convert the hex to dec
@@ -54,6 +58,32 @@ def send_speed(msg):
         MSG_ = "00B4" + str(auto_speed).ljust(5) + str(msg.timestamp).ljust(13)
         print(MSG_)
         sock.sendto(MSG_, (UDP_IP, UDP_PORT))
+        
+        
+def send_accel(msg):    #new 03/01
+    data_ = binascii.hexlify(msg.data)  #new 03/01
+    #convert the hex to dec    #new 03/01
+    auto_accel = int(data_[0:4], 16)   #new 03/01
+    #acceleration pedal position, from 128 to 200 
+    MSG_ = "0245" + str(auto_accel).ljust(3) + str(msg.timestamp).ljust(13)   #new 03/01
+    print(MSG_)   #new 03/01
+    sock.sendto(MSG_, (UDP_IP, UDP_PORT))   #new 03/01   
+
+ 
+def send_steer(msg):    #new 03/01
+    data_ = binascii.hexlify(msg.data)  #new 03/01
+    #convert the hex to dec    #new 03/01
+    auto_steer = int(data_[0:4], 16)   #new 03/01
+    
+    #CounterClockwise from 0 to 343  #new 03/01
+    if auto_steer < 344:   #new 03/01
+        MSG_ = "0025" + "1" + str(auto_steer).ljust(3) + str(msg.timestamp).ljust(13)   #new 03/01
+    #Clockwise from 1 to 342   #new 03/01
+    else:
+        auto_steer = 4096 - auto_steer
+        MSG_ = "0025" + "0" + str(auto_steer).ljust(3) + str(msg.timestamp).ljust(13)   #new 03/01
+    print(MSG_)   #new 03/01
+    sock.sendto(MSG_, (UDP_IP, UDP_PORT))   #new 03/01  
 #UDP sending part
 
 

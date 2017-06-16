@@ -11,7 +11,7 @@ import argparse
 import time
 import binascii 
 import can
-
+from OSC import OSCMessage
 
 #UDP sending part
 # UDP socket setting 
@@ -27,11 +27,14 @@ print("First trial message sent successfully!")
 #UDP sending function
 def send_udp(msg):
     if msg.arbitration_id == 0x0224:
-        send_brake(msg)
+        #send_brake(msg)
+	msg = msg
     if msg.arbitration_id == 0x00B4:
-        send_speed(msg)
+        #send_speed(msg)
+	msg = msg
     if msg.arbitration_id == 0x0245:   #new 03/01
-        send_accel(msg)   #new 03/01
+        #send_accel(msg)   #new 03/01
+	msg = msg
     if msg.arbitration_id == 0x0025:   #new 03/01
         send_steer(msg)   #new 03/01
         
@@ -75,15 +78,19 @@ def send_steer(msg):    #new 03/01
     #convert the hex to dec    #new 03/01
     auto_steer = int(data_[0:4], 16)   #new 03/01
     
+    MSG_ = OSCMessage('/steer')
     #CounterClockwise from 0 to 343  #new 03/01
     if auto_steer < 344:   #new 03/01
-        MSG_ = "0025" + "1" + str(auto_steer).ljust(3) + str(msg.timestamp).ljust(13)   #new 03/01
+        MSG_ += 1 
+        MSG_ += auto_steer  #new 03/01
     #Clockwise from 1 to 342   #new 03/01
     else:
         auto_steer = 4096 - auto_steer
-        MSG_ = "0025" + "0" + str(auto_steer).ljust(3) + str(msg.timestamp).ljust(13)   #new 03/01
+        MSG_ += 0
+        MSG_ += auto_steer
     print(MSG_)   #new 03/01
-    sock.sendto(MSG_, (UDP_IP, UDP_PORT))   #new 03/01  
+    binary = MSG_.getBinary()
+    sock.sendto(binary, (UDP_IP, UDP_PORT))   #new 03/01  
 #UDP sending part
 
 

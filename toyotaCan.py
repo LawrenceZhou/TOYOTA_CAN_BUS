@@ -220,11 +220,15 @@ def sendPosition(positionX, positionY):
     sock.sendto(binary, (UDP_IP, UDP_PORT))
 
 
+cb = 0
+csp = 0
+ca = 0
+cst = 0
 def processMsg(msg):
-    cb = 0
-    csp = 0
-    ca = 0
-    cst = 0
+    global cb
+    global csp
+    global ca
+    global cst
     if msg.arbitration_id == 0x0224:
         data_ = binascii.hexlify(msg.data)
         #convert the hex to dec

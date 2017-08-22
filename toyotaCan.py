@@ -13,6 +13,7 @@ import binascii
 import can
 from OSC import OSCMessage
 import numpy as np
+import math
 
 #UDP sending part
 # UDP socket setting 

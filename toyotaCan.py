@@ -12,6 +12,7 @@ import time
 import binascii 
 import can
 from OSC import OSCMessage
+import numpy as np
 
 #UDP sending part
 # UDP socket setting 
@@ -22,6 +23,244 @@ MSG = str(time.time())
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.sendto(MSG, (UDP_IP, UDP_PORT))
 print("First trial message sent successfully!")
+
+#VBAP Part
+#soundVolume = 1
+#l1 = np.array([0, 0])
+#l2 = np.array([0, 0])
+#l3 = np.array([0, 0])
+#l4 = np.array([0, 0])
+#g = np.array([0, 0])
+p = np.array([0, 0])
+
+#car status
+carSpeed = 0
+carSteer = 0
+carAcceleration = 0
+carBrake = 0
+
+#car property
+carLength = 2.7
+carSteerRatio = 17.6
+theta = 0
+
+#sound soure
+soundSourceP = np.array([0, 0])
+soundSourceV = np.array([0, 0])
+soundSourcePLength = 0
+soundRadius = 4.8
+positionStack = []
+initPosition = np.array([0, 0])
+positionStack.append(initPosition)
+
+
+#valve value
+STEERSTRAIGHTVALVE = 45
+ACCELERATIONVALVE = 15
+BRAKEVALVE = 0
+
+#constant parameter
+accParam = 0.02
+braParam = 0.003
+steParam = 0.01
+speParam = 0.0005
+
+#def calculateG():
+#    m = np.asmatrix(np.array([l1, l2]))
+#    tempGMatrix = np.dot(np.asmatrix(np.array(p)), m.getI())
+#    tempGArray = np.squeeze(np.asarray(tempGMatrix))
+#    if tempGArray[0] < 0:
+#        tempGArray[0] = 0
+#    if tempGArray[1] < 0:
+#        tempGArray[1] = 0
+#
+#    return tempGArray
+#
+#
+#def calculateGScaled(gOriginal):
+#    g = np.sqrt(soundVolume) * gOriginal / np.sqrt(gOriginal[0] * gOriginal[0] + gOriginal[1] * gOriginal[1])
+#
+#
+#def selectPair():
+#    g12 = calculateG(p, l1, l2)
+#    g23 = calculateG(p, l2, l3)
+#    g34 = calculateG(p, l3, l4)
+#    g41 = calculateG(p, l4, l1)
+#
+#    listDev = [np.absolute(g12[0] - g12[1]), np.absolute(g23[0] - g23[1]),
+#               np.absolute(g34[0] - g34[1]), np.absolute(g41[0] - g41[1])]
+#
+#    pairSelected = listDev.index(max(listDev))
+#    return pairSelected
+#
+#
+#
+#def findZone():
+#    soundSourcePLength = np.sqrt(soundSourceP[0] * soundSourceP[0] + soundSourceP[1] * soundSourceP[1])
+#    if soundSourcePLength < 0.3:
+#        return 0
+#    else:
+#        return 1
+
+
+def isOnVerge(lastPosition):
+    soundRadius = 4.8
+    soundSourcePLength = np.sqrt(lastPosition[0] * lastPosition[0] + lastPosition[1] * lastPosition[1]) 
+    if soundSourcePLength >= soundRadius:
+        return True
+    else:
+        return False
+
+
+def calculatePath(carData):
+    global carLength
+    global carSteerRatio
+    global theta
+    global soundSourcePLength
+    global soundRadius
+    global positionStack
+    global STEERSTRAIGHTVALVE
+    global ACCELERATIONVALVE
+    global BRAKEVALVE
+    global accParam
+    global braParam
+    global steParam
+    global speParam
+    #straight line
+    carBrake = carData[0]
+    carAcceleration = carData[1]
+    #carSpeed = carData[2]
+    carSpeed = 3226 #20mph
+    carSteer = carData[3]
+    lastPosition = positionStack[len(positionStack) - 1]
+    newPosition = lastPosition
+    if carSteer < STEERSTRAIGHTVALVE and carSteer > -STEERSTRAIGHTVALVE:
+        #acceleration situation
+        if carAcceleration > ACCELERATIONVALVE:
+            if isOnVerge(lastPosition):
+                #do nothing
+                print("On rear verge!")
+            else:
+                #sound source left behind
+                soundSourceV = np.array([0, -carAcceleration * accParam])
+                newPosition = lastPosition + soundSourceV
+                positionStack.append(newPosition)
+        #brake situation
+        elif carBrake > BRAKEVALVE:
+            if isOnVerge(lastPosition):
+                #do nothing
+                print("On front verge!")
+            else:
+                #sound source onrush
+                soundSourceV = np.array([0, carBrake * braParam])
+                newPosition = lastPosition + soundSourceV
+                positionStack.append(newPosition)
+        #go back
+        else:
+            #soundSourceV = np.array([ -soundSourceP[0] / soundSourcePLength, -soundSourceP[1] / soundSourcePLength])
+            #soundSourceP = soundSourceP + soundSourceV
+            if len(positionStack) > 1:
+                newPosition = positionStack[len(positionStack) - 1]
+                positionStack.pop()             
+            else:
+                theta = 0
+                newPosition = positionStack[0]
+    #turning
+    else:
+        if isOnVerge(lastPosition):
+            #do nothing
+            print("On left/right verge!")
+        else:
+            #not fully completed
+            #right turn
+            if carSteer < 0:
+                #wizardOfOz
+                #soundSourceV = np.array([ -speed / 20,  speed / 20])
+                #soundSourceP = soundSourceP + soundSourceV
+                #positionStack.append(soundSourceP)
+                #angle
+                omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength
+                theta = theta + omega * steParam 
+                soundSourceV = np.array([ -mphTomps(carSpeed) * math.cos(theta) * speParam, mphTomps(carSpeed) * math.sin(theta) * speParam])
+                newPosition = lastPosition + soundSourceV
+                positionStack.append(newPosition)
+            #left turn
+            else:
+                #wizardOfOz
+                #soundSourceV = np.array([ speed / 20,  speed / 20])
+                #soundSourceP = soundSourceP + soundSourceV
+                #positionStack.append(soundSourceP)
+                #angle
+                omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength
+                theta = theta + omega * steParam 
+                soundSourceV = np.array([ mphTomps(carSpeed) * math.cos(theta) * speParam, -mphTomps(carSpeed) * math.sin(theta) * speParam])
+                newPosition = lastPosition + soundSourceV
+                positionStack.append(newPosition)
+
+    #print(newPosition)
+    return newPosition
+
+
+def realToVBAP(s):
+    soundSourcePLength = 4.8
+    lp = np.array([s[0] / soundSourcePLength, s[1] / soundSourcePLength])
+    return lp
+
+
+def mphTomps(mph):
+    return mph * 0.0062 * 1609 / 3600
+
+
+def sendPosition(positionX, positionY):
+    MSG_ = OSCMessage('/position')
+    MSG_ += positionX
+    MSG_ += positionY
+    print(MSG_)
+    binary = MSG_.getBinary()
+    sock.sendto(binary, (UDP_IP, UDP_PORT))
+
+
+def processMsg(msg):
+    cb = 0
+    csp = 0
+    ca = 0
+    cst = 0
+    if msg.arbitration_id == 0x0224:
+        data_ = binascii.hexlify(msg.data)
+        #convert the hex to dec
+        cb = (int(data_[10:12], 16) + int(data_[8:10], 16) * 256) / 15.56
+
+    if msg.arbitration_id == 0x0245: 
+        data_ = binascii.hexlify(msg.data)
+        #convert the hex to dec  
+        ca= int(int(data_[4:6], 16) / 2)
+
+    if msg.arbitration_id == 0x00B4:
+        data_ = binascii.hexlify(msg.data)
+        #convert the hex to dec
+        csp = int(data_[10:15], 16)
+ 
+    if msg.arbitration_id == 0x0025:
+        data_ = binascii.hexlify(msg.data)
+        #convert the hex to dec  
+        auto_steer = int(data_[0:4], 16) 
+        #CounterClockwise from 0 to 343
+        if auto_steer < 344: 
+            cst = auto_steer
+        #Clockwise from 1 to 342
+        else:
+            auto_steer = auto_steer - 4096
+            cst = auto_steer
+
+    return[cb, ca, csp, cst]
+
+
+
+def mainProcess(msg):
+    carData = processMsg(msg)
+    soundSourcePos = calculatePath(carData)
+    vectorPos = realToVBAP(soundSourcePos)
+    sendPosition(vectorPos[0], vectorPos[1])
 
 
 #UDP sending function
@@ -142,10 +381,14 @@ if __name__ == "__main__":
     bus = can.interface.Bus(results.channel, bustype=results.interface, can_filters=can_filters)
     #print('Can Logger (Started on {})\n'.format(datetime.datetime.now()))
     #notifier = can.Notifier(bus, [can.Printer(results.log_file), can.Printer(results.log_file)])
-      
+
+
     #Sending message through UDP  
     for msg in bus:
-        send_udp(msg)
+        #send_udp(msg)
+        mainProcess(msg)
+
+         
 
     try:
         while True:

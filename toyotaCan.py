@@ -60,8 +60,8 @@ ACCELERATIONVALVE = 15
 BRAKEVALVE = 0
 
 #constant parameter
-accParam = 0.02
-braParam = 0.003
+accParam = 0.0002
+braParam = 0.0003
 steParam = 0.01
 speParam = 0.0005
 

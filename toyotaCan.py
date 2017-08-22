@@ -63,7 +63,7 @@ BRAKEVALVE = 0
 #constant parameter
 accParam = 0.005
 braParam = 0.003
-steParam = 0.01
+steParam = 0.001
 speParam = 0.005
 
 #def calculateG():
@@ -104,10 +104,36 @@ speParam = 0.005
 #        return 1
 
 
+def isOnRearVerge(lastPosition):
+    soundRadius = 4.8
+    if lastPosition[1] > 0:
+	return False
+    else:
+    	soundSourcePLength = np.sqrt(lastPosition[0] * lastPosition[0] + lastPosition[1] * lastPosition[1]) 
+   	if soundSourcePLength >= soundRadius:
+            return True
+        else:
+            return False
+
+
+def isOnFrontVerge(lastPosition):
+    soundRadius = 4.8
+    if lastPosition[1] < 0:
+	return False
+    else:
+    	soundSourcePLength = np.sqrt(lastPosition[0] * lastPosition[0] + lastPosition[1] * lastPosition[1]) 
+   	if soundSourcePLength >= soundRadius:
+            return True
+        else:
+            return False
+
+
 def isOnVerge(lastPosition):
     soundRadius = 4.8
     soundSourcePLength = np.sqrt(lastPosition[0] * lastPosition[0] + lastPosition[1] * lastPosition[1]) 
     if soundSourcePLength >= soundRadius:
+        lastPosition[0] /= soundSourcePLength / soundRadius
+        lastPosition[1] /= soundSourcePLength / soundRadius
         return True
     else:
         return False
@@ -138,7 +164,7 @@ def calculatePath(carData):
     if carSteer < STEERSTRAIGHTVALVE and carSteer > -STEERSTRAIGHTVALVE:
         #acceleration situation
         if carAcceleration > ACCELERATIONVALVE:
-            if isOnVerge(lastPosition):
+            if isOnRearVerge(lastPosition):
                 #do nothing
                 print("On rear verge!")
             else:
@@ -148,7 +174,7 @@ def calculatePath(carData):
                 positionStack.append(newPosition)
         #brake situation
         elif carBrake > BRAKEVALVE:
-            if isOnVerge(lastPosition):
+            if isOnFrontVerge(lastPosition):
                 #do nothing
                 print("On front verge!")
             else:
@@ -171,6 +197,10 @@ def calculatePath(carData):
         if isOnVerge(lastPosition):
             #do nothing
             print("On left/right verge!")
+	    omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength * steParam
+	    soundSourceV = np.array([ -mphTomps(carSpeed) * math.cos(omega) * speParam, mphTomps(carSpeed) * math.sin(omega) * speParam])
+	    newPosition = lastPosition + soundSourceV
+            positionStack.append(newPosition)
         else:
             #not fully completed
             #right turn

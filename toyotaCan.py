@@ -61,10 +61,10 @@ ACCELERATIONVALVE = 15
 BRAKEVALVE = 0
 
 #constant parameter
-accParam = 0.00005
-braParam = 0.0003
+accParam = 0.005
+braParam = 0.003
 steParam = 0.01
-speParam = 0.0005
+speParam = 0.005
 
 #def calculateG():
 #    m = np.asmatrix(np.array([l1, l2]))

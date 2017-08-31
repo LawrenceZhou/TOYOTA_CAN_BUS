@@ -53,6 +53,7 @@ soundRadius = 4.8
 positionStack = []
 initPosition = np.array([0, 0])
 positionStack.append(initPosition)
+lastPosition = np.array([0, 0])
 
 
 #valve value
@@ -128,12 +129,17 @@ def isOnFrontVerge(lastPosition):
             return False
 
 
-def isOnVerge(lastPosition):
+def isOnVerge(Position):
     soundRadius = 4.8
-    soundSourcePLength = np.sqrt(lastPosition[0] * lastPosition[0] + lastPosition[1] * lastPosition[1]) 
-    if soundSourcePLength >= soundRadius:
-        lastPosition[0] /= soundSourcePLength / soundRadius
-        lastPosition[1] /= soundSourcePLength / soundRadius
+    soundSourcePLength = np.sqrt(Position[0] * Position[0] + Position[1] * Position[1]) 
+    if soundSourcePLength > soundRadius:
+        return True
+    else:
+        return False
+
+def isInCenter(Position):
+    soundSourcePLength = np.sqrt(Position[0] * Position[0] + Position[1] * Position[1]) 
+    if soundSourcePLength < 0.01:
         return True
     else:
         return False
@@ -153,80 +159,132 @@ def calculatePath(carData):
     global braParam
     global steParam
     global speParam
+    global lastPosition
     #straight line
     carBrake = carData[0]
     carAcceleration = carData[1]
     #carSpeed = carData[2]
     carSpeed = 3226 #20mph
     carSteer = carData[3]
-    lastPosition = positionStack[len(positionStack) - 1]
+    #lastPosition = positionStack[len(positionStack) - 1]
     newPosition = lastPosition
     if carSteer < STEERSTRAIGHTVALVE and carSteer > -STEERSTRAIGHTVALVE:
         #acceleration situation
         if carAcceleration > ACCELERATIONVALVE:
-            if isOnRearVerge(lastPosition):
-                #do nothing
+	    soundSourceV = np.array([0, -carAcceleration * accParam])
+	    if isOnVerge(lastPosition + soundSourceV):
+		#do nothing
                 print("On rear verge!")
-            else:
-                #sound source left behind
-                soundSourceV = np.array([0, -carAcceleration * accParam])
-                newPosition = lastPosition + soundSourceV
-                positionStack.append(newPosition)
+		newPosition = lastPosition + soundSourceV
+		soundSourcePLength = np.sqrt(newPosition[0] * newPosition[0] + newPosition[1] * newPosition[1]) 
+		newPosition[0] /= soundSourcePLength / soundRadius
+        	newPosition[1] /= soundSourcePLength / soundRadius
+		lastPosition = newPosition
+	    else:
+		newPosition = lastPosition + soundSourceV
+		lastPosition = newPosition
+            #if isOnRearVerge(lastPosition):
+            #    #do nothing
+            #    print("On rear verge!")
+            #else:
+            #    #sound source left behind
+            #    soundSourceV = np.array([0, -carAcceleration * accParam])
+            #    newPosition = lastPosition + soundSourceV
+            #    #positionStack.append(newPosition)
         #brake situation
         elif carBrake > BRAKEVALVE:
-            if isOnFrontVerge(lastPosition):
-                #do nothing
-                print("On front verge!")
-            else:
-                #sound source onrush
-                soundSourceV = np.array([0, carBrake * braParam])
-                newPosition = lastPosition + soundSourceV
-                positionStack.append(newPosition)
+	    soundSourceV = np.array([0, carBrake * braParam])
+	    if isOnVerge(lastPosition + soundSourceV):
+		#do nothing
+                print("On rear verge!")
+		newPosition = lastPosition + soundSourceV
+		soundSourcePLength = np.sqrt(newPosition[0] * newPosition[0] + newPosition[1] * newPosition[1]) 
+		newPosition[0] /= soundSourcePLength / soundRadius
+        	newPosition[1] /= soundSourcePLength / soundRadius
+		lastPosition = newPosition
+	    else:
+		newPosition = lastPosition + soundSourceV
+		lastPosition = newPosition
+            #if isOnFrontVerge(lastPosition):
+            #    #do nothing
+            #    print("On front verge!")
+            #else:
+            #    #sound source onrush
+            #    soundSourceV = np.array([0, carBrake * braParam])
+            #    newPosition = lastPosition + soundSourceV
+            #    #positionStack.append(newPosition)
         #go back
         else:
-            #soundSourceV = np.array([ -soundSourceP[0] / soundSourcePLength, -soundSourceP[1] / soundSourcePLength])
+	    soundSourceV = np.array([ -soundSourceP[0] / soundSourcePLength, -soundSourceP[1] / soundSourcePLength]) * speParam
+	    if isInCenter(lastPosition + soundSourceV):
+		newPosition = np.array([0.0, 0.0])
+		lastPosition = newPosition
+	    else:
+		newPosition = lastPosition + soundSourceV
+		lastPosition = newPosition	    
             #soundSourceP = soundSourceP + soundSourceV
-            if len(positionStack) > 1:
-                newPosition = positionStack[len(positionStack) - 1]
-                positionStack.pop()             
-            else:
-                theta = 0
-                newPosition = positionStack[0]
+            #if len(positionStack) > 1:
+            #    newPosition = positionStack[len(positionStack) - 1]
+            #    positionStack.pop()             
+            #else:
+            #    theta = 0
+            #    newPosition = positionStack[0]
+	    
     #turning
     else:
-        if isOnVerge(lastPosition):
-            #do nothing
-            print("On left/right verge!")
-	    omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength * steParam
-	    soundSourceV = np.array([ -mphTomps(carSpeed) * math.cos(omega) * speParam, mphTomps(carSpeed) * math.sin(omega) * speParam])
-	    newPosition = lastPosition + soundSourceV
-            positionStack.append(newPosition)
-        else:
+        #if isOnVerge(lastPosition):
+        #    #do nothing
+        #    print("On left/right verge!")
+	#    omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength * steParam
+	#    soundSourceV = np.array([ -mphTomps(carSpeed) * math.cos(omega) * speParam, mphTomps(carSpeed) * math.sin(omega) * speParam])
+	#    newPosition = lastPosition + soundSourceV
+        #    #positionStack.append(newPosition)
+        #else:
             #not fully completed
             #right turn
-            if carSteer < 0:
+        if carSteer < 0:
                 #wizardOfOz
                 #soundSourceV = np.array([ -speed / 20,  speed / 20])
                 #soundSourceP = soundSourceP + soundSourceV
                 #positionStack.append(soundSourceP)
                 #angle
-                omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength
-                theta = theta + omega * steParam 
-                soundSourceV = np.array([ -mphTomps(carSpeed) * math.cos(theta) * speParam, mphTomps(carSpeed) * math.sin(theta) * speParam])
-                newPosition = lastPosition + soundSourceV
-                positionStack.append(newPosition)
+            omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength
+            theta = theta + omega * steParam 
+            soundSourceV = np.array([ -mphTomps(carSpeed) * math.cos(theta) * speParam, mphTomps(carSpeed) * math.sin(theta) * speParam])
+            if isOnVerge(lastPosition + soundSourceV):
+	        #do nothing
+                print("On rear verge!")
+		newPosition = lastPosition + soundSourceV
+		soundSourcePLength = np.sqrt(newPosition[0] * newPosition[0] + newPosition[1] * newPosition[1]) 
+		newPosition[0] /= soundSourcePLength / soundRadius
+        	newPosition[1] /= soundSourcePLength / soundRadius
+		lastPosition = newPosition
+	    else:
+		newPosition = lastPosition + soundSourceV
+		lastPosition = newPosition
+                #positionStack.append(newPosition)
             #left turn
-            else:
+        else:
                 #wizardOfOz
                 #soundSourceV = np.array([ speed / 20,  speed / 20])
                 #soundSourceP = soundSourceP + soundSourceV
                 #positionStack.append(soundSourceP)
                 #angle
-                omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength
-                theta = theta + omega * steParam 
-                soundSourceV = np.array([ mphTomps(carSpeed) * math.cos(theta) * speParam, -mphTomps(carSpeed) * math.sin(theta) * speParam])
-                newPosition = lastPosition + soundSourceV
-                positionStack.append(newPosition)
+            omega = mphTomps(carSpeed) * math.sin(carSteer / carSteerRatio * math.pi / 180) / carLength
+            theta = theta + omega * steParam 
+            soundSourceV = np.array([ mphTomps(carSpeed) * math.cos(theta) * speParam, -mphTomps(carSpeed) * math.sin(theta) * speParam])
+            if isOnVerge(lastPosition + soundSourceV):
+		#do nothing
+                print("On rear verge!")
+		newPosition = lastPosition + soundSourceV
+		soundSourcePLength = np.sqrt(newPosition[0] * newPosition[0] + newPosition[1] * newPosition[1]) 
+		newPosition[0] /= soundSourcePLength / soundRadius
+        	newPosition[1] /= soundSourcePLength / soundRadius
+		lastPosition = newPosition
+	    else:
+		newPosition = lastPosition + soundSourceV
+		lastPosition = newPosition
+                #positionStack.append(newPosition)
 
     #print(newPosition)
     return newPosition
